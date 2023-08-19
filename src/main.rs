@@ -3,5 +3,17 @@ use utils::jack_tokenizer::JackTokenizer;
 
 fn main() {
     let mut tokenizer = JackTokenizer::new("Main.jack");
-    tokenizer.has_more_token();
+    loop {
+        if !tokenizer.has_more_token() {
+            break;
+        }
+        match &tokenizer.string_val{
+            Some(a) => println!("{}", a),
+            None => continue,
+        }
+        // match tokenizer.symbol {
+        //     Some(a) => println!("{}", a),
+        //     None => continue,
+        // }
+    }
 }
