@@ -1,4 +1,5 @@
 mod utils;
+use utils::parser::CompilationEngine;
 use utils::jack_tokenizer::JackTokenizer;
 
 fn main() {
