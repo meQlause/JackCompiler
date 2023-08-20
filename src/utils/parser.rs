@@ -17,8 +17,9 @@ pub enum Grammar {
     ),
     Expression(
         String,
-        Vec<char>,
+        Vec<String>,
         String,
+        i8
     )
 }
 pub struct StackCompiler {
@@ -32,10 +33,11 @@ impl StackCompiler {
         list_func.insert("expressionFn".to_string(), Box::new(CompilationEngine::expression_compiler));
         list_func.insert("statementsFn".to_string(), Box::new(CompilationEngine::statements_compiler));
         list_func.insert("varnameFn".to_string(), Box::new(CompilationEngine::varname_compiler));
+        list_func.insert("termFn".to_string(), Box::new(CompilationEngine::term_compiler));
         Self { 
             list_func: list_func, 
             stack: Vec::new(),
-            valid_stack: vec!["expressionFn".to_string(), "statementsFn".to_string(), "varnameFn".to_string()]
+            valid_stack: vec!["expressionFn".to_string(), "statementsFn".to_string(), "varnameFn".to_string(), "termFn".to_string()]
         }
     }
     pub fn push(&mut self, s:String) {
@@ -48,8 +50,9 @@ impl StackCompiler {
 }
 pub struct CompilationEngine {
     file: File,
-    while_statement: Grammar,
     stack : StackCompiler,
+    while_statement: Grammar,
+    expression_statement: Grammar,
 }
 
 impl CompilationEngine {
@@ -66,6 +69,12 @@ impl CompilationEngine {
                 "statementFn".to_string(),  
                 '}',
                 0
+            ),
+            expression_statement: Grammar::Expression(
+                "termFn".to_string(), 
+                vec!["+".to_string(), "-".to_string(), "=".to_string(), ">".to_string(), ",".to_string()],
+                "termFn".to_string(),
+                0
             )
         }
     }
@@ -76,11 +85,31 @@ impl CompilationEngine {
         None
     }
 
-    fn expression_compiler(file: &mut File, s:String, grammar: &mut Grammar) -> Option<String> {
-        writeln!(file,"<expression>");
-        writeln!(file,"</expression>");
-        None
+    fn expression_compiler(file: &mut File, syntax:String, grammar: &mut Grammar) -> Option<String> {
+        match grammar {
+            Grammar::Expression(a, b, c, state) => {
+                if !b.contains(&syntax) && *state == 1 {
+                    if syntax != ")".to_string() { panic!("add ')' after expression")} 
+                    writeln!(file,"</expression>").unwrap();
+                    *state = 0;
+                    return None; 
+                }
+                if *state == 0 {
+                    writeln!(file,"<expression>").unwrap();
+                    return Some(a.to_string());
+                } else if *state == 1 {
+                    writeln!(file,"{}", Self::parse("symbol".to_string(), syntax)).unwrap();
+                } else if *state == 1 {
+                    return Some(c.to_string());
+                }
+                *state += 1;
+                if *state == 2 { *state = 0; }
+                None
+            }
+            _ => panic!("not while statements")
+        }
     }
+
 
     fn term_compiler(file: &mut File, s:String, grammar: &mut Grammar) -> Option<String> {
         writeln!(file,"<term>");
