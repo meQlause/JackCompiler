@@ -3,14 +3,14 @@ use std::io::{BufReader, BufRead};
 use std::sync::Arc;
 use std::collections::HashMap;
 
-pub struct JackTokenizer<'a> {
+pub struct JackTokenizer {
     file: File,
     line: i128,
     total_line: i128,
     token_maks: usize,
     current_token: usize,
-    symbols: Arc<[char; 19]>,
-    keywords: Arc<[&'a str; 21]>,
+    symbols: Arc<[String; 19]>,
+    keywords: Arc<[String; 21]>,
     tokens: HashMap<i128, Vec<String>>,
     pub keyword: Option<String>,
     pub symbol: Option<char>,
@@ -19,7 +19,7 @@ pub struct JackTokenizer<'a> {
     pub string_val: Option<String>,
 }
 
-impl<'a> JackTokenizer<'a> {
+impl JackTokenizer {
     pub fn new(file_name: &str)  -> Self { 
         let file = File::open(file_name).expect("Error opening file");
         Self { 
@@ -28,8 +28,8 @@ impl<'a> JackTokenizer<'a> {
             total_line: 0,
             token_maks: 0usize,
             current_token: 1usize,
-            symbols: Arc::new(['{', '}', '(', ')', '[', ']', '.', ',', ';', '+', '-', '*', '/', '&', '|', '<', '>', '=', '~']),
-            keywords: Arc::new(["class", "constructor", "function", "method", "field", "static", "var", "int", "char", "boolean", "void", "true", "false", "null", "this", "let", "do", "if", "else", "while", "return"]),
+            symbols: Arc::new(["{".to_string(), "}".to_string(), "(".to_string(), ")".to_string(), "[".to_string(), "]".to_string(), ".".to_string(), ",".to_string(), ";".to_string(), "+".to_string(), "-".to_string(), "*".to_string(), "/".to_string(), "&".to_string(), "|".to_string(), "<".to_string(), ">".to_string(), "=".to_string(), "~".to_string()]),
+            keywords: Arc::new(["class".to_string(), "constructor".to_string(), "function".to_string(), "method".to_string(), "field".to_string(), "static".to_string(), "var".to_string(), "int".to_string(), "char".to_string(), "boolean".to_string(), "void".to_string(), "true".to_string(), "false".to_string(), "null".to_string(), "this".to_string(), "let".to_string(), "do".to_string(), "if".to_string(), "else".to_string(), "while".to_string(), "return".to_string()]),
             tokens: HashMap::new(),
             keyword: None, 
             symbol: None, 
@@ -57,17 +57,19 @@ impl<'a> JackTokenizer<'a> {
                     continue;
                 }
                 if c == ' ' {
-                    if syntax.as_bytes().len() != 0 {
+                    syntax = syntax.trim().to_string();
+                    if !syntax.is_empty() {
                         let value = self.tokens.get_mut(&self.total_line).expect("Invalid key"); 
-                        value.push(syntax.trim().to_string());
+                        value.push(syntax.to_string());
                         syntax.clear();
                     }
                     continue;
                     }
-                if self.symbols.contains(&c) {
-                    if syntax.as_bytes().len() != 0 {
+                if self.symbols.contains(&c.to_string()) {
+                    syntax = syntax.trim().to_string();
+                    if !syntax.is_empty() {
                         let value = self.tokens.get_mut(&self.total_line).expect("Invalid key"); 
-                        value.push(syntax.trim().to_string());
+                        value.push(syntax.to_string());
                         syntax.clear();
                     } 
                     let value = self.tokens.get_mut(&self.total_line).expect("Invalid key"); 
@@ -108,8 +110,7 @@ impl<'a> JackTokenizer<'a> {
 
     fn advance(&mut self) {
         let list_token = self.tokens.get(&self.line).unwrap();
-        if list_token[self.current_token].is_empty() { return };
-        if self.keywords.contains(&list_token[self.current_token].as_str()) {
+        if self.keywords.contains(&list_token[self.current_token]) {
             self.keyword = Some(list_token[self.current_token].to_string()); 
             self.symbol = None;
             self.identifier = None; 
@@ -117,7 +118,7 @@ impl<'a> JackTokenizer<'a> {
             self.string_val = None; 
             return;
         }
-        if self.symbols.contains(&list_token[self.current_token].chars().next().unwrap()) {
+        if self.symbols.contains(&list_token[self.current_token]) {
             self.keyword = None; 
             self.symbol = list_token[self.current_token].chars().next();
             self.identifier = None; 
