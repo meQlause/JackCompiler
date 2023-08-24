@@ -17,7 +17,6 @@ impl StackCompiler {
         list_func.insert("expressionFn".to_string(), Box::new(CompilationEngine::expression_compiler));
         list_func.insert("whileFn".to_string(), Box::new(CompilationEngine::while_compiler));
         list_func.insert("statementsFn".to_string(), Box::new(CompilationEngine::statements_compiler));
-        list_func.insert("varnameFn".to_string(), Box::new(CompilationEngine::varname_compiler));
         list_func.insert("termFn".to_string(), Box::new(CompilationEngine::term_compiler));
         Self { 
             list_func: list_func,
@@ -29,7 +28,7 @@ impl StackCompiler {
     }
     pub fn push(&mut self, s:&String) {
         self.stack_compiler.push(s.to_string()); 
-        self.stack_state.push(0);
+        self.stack_state.push(1);
         self.pointer = self.stack_compiler.len() - 1;
     }
     pub fn pop(&mut self) {
@@ -61,18 +60,6 @@ impl CompilationEngine {
         }
     }
     
-    fn varname_compiler(file: &mut File, s:&JackTokenizer, state: &mut i8) -> Option<String> {
-        writeln!(file,"<expression>");
-        writeln!(file,"</expression>");
-        None
-    }
-
-    fn constant_compiler(file: &mut File, s:&JackTokenizer, state: &mut i8) -> Option<String> {
-        writeln!(file,"<expression>");
-        writeln!(file,"</expression>");
-        None
-    }
-
     fn expression_compiler(file: &mut File, syntax:&JackTokenizer, state: &mut i8) -> Option<String> {
         if !vec!["+".to_string(), "-".to_string(), "=".to_string(), "<".to_string(), ">".to_string()].contains(&syntax.symbol.unwrap().to_string()) && state == &mut 1i8 {
             if syntax.symbol.unwrap().to_string() != ")".to_string() { panic!("add ')' after expression")} 
@@ -81,20 +68,20 @@ impl CompilationEngine {
             *state = 0;
             return None; 
         }
-        if state == &mut 0i8 {
+        if state == &mut 1i8 {
             writeln!(file,"<expression>").unwrap();
             *state += 1;
             return Some("termFn".to_string());
-        } else if state == &mut 1i8 {
-            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &syntax.symbol.unwrap().to_string())).unwrap();
         } else if state == &mut 2i8 {
+            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &syntax.symbol.unwrap().to_string())).unwrap();
+        } else if state == &mut 3i8 {
             *state += 1;
             return Some("termFn".to_string());
-        } else if state == &mut 3i8 {
+        } else if state == &mut 4i8 {
             writeln!(file,"</expression>").unwrap();
         }
         *state += 1;
-        if *state == 4 { *state = 0; }
+        if *state == 5 { *state = 0; }
         None
     }
     
@@ -102,42 +89,61 @@ impl CompilationEngine {
 
     fn term_compiler(file: &mut File, s:&JackTokenizer, state: &mut i8) -> Option<String> {
         writeln!(file,"<term>");
+        if let Some(syntax) = s.int_val {
+            writeln!(file,"{}", Self::parse(&"integerConstant".to_string(), &syntax.to_string())).unwrap();
+        } 
+        if let Some(syntax) = s.string_val.to_owned() {
+            writeln!(file,"{}", Self::parse(&"identifier".to_string(), &syntax.to_string())).unwrap();
+        }  
         writeln!(file,"</term>");
+        *state = 0;
         None
     }
 
     fn statements_compiler(file: &mut File, s:&JackTokenizer, state: &mut i8) -> Option<String> {
-        writeln!(file,"<statements>");
-        writeln!(file,"</statements>");
+        let statements = vec!["let".to_string(), "while".to_string(), "if".to_string()];
+        if state == &mut 1i8 {
+            writeln!(file,"<statements>");
+            if let Some(syntax) = &s.keyword {
+                if !statements.contains(syntax) {panic!("{} not a statement", syntax)}
+                *state += 1;
+                if syntax == &statements[0] {return Some("letFn".to_string());}
+                if syntax == &statements[1] {return Some("whileFn".to_string());}
+                if syntax == &statements[2] {return Some("ifFn".to_string());}
+            }
+        } else if state == &mut 2i8 {
+            *state = 0;
+            writeln!(file,"</statements>");
+        }
         None
     }
 
     fn while_compiler(file: &mut File, syntax: &JackTokenizer, state: &mut i8) -> Option<String> {
-        if state == &mut 0i8 {
+        if state == &mut 1i8 {
             if "while".to_string() != syntax.keyword.as_ref().unwrap().to_string() { panic!("not while statement"); }
             writeln!(file,"<whileStatements>").unwrap();
             writeln!(file,"{}", Self::parse(&"keyword".to_string(), &syntax.keyword.as_ref().unwrap().to_string())).unwrap();
-        } else if state == &mut 1i8 {
+        } else if state == &mut 2i8 {
             if "(".to_string() != syntax.symbol.unwrap().to_string() { panic!("expected (, found {}", syntax.symbol.unwrap().to_string()); }
             writeln!(file,"{}", Self::parse(&"symbol".to_string(), &syntax.symbol.unwrap().to_string())).unwrap();
-        } else if state == &mut 2i8 {
+        } else if state == &mut 3i8 {
             *state += 1;
             return Some("expressionFn".to_string());
-        } else if state == &mut 3i8 {
+        } else if state == &mut 4i8 {
             if ")".to_string() != syntax.symbol.unwrap().to_string() { panic!("expected ), found {}", syntax.symbol.unwrap().to_string()); }
             writeln!(file,"{}", Self::parse(&"symbol".to_string(), &syntax.symbol.unwrap().to_string())).unwrap();
-        } else if state == &mut 4i8 {
+        } else if state == &mut 5i8 {
             if "{".to_string() != syntax.symbol.unwrap().to_string() { panic!("expected {{, found {}", syntax.symbol.unwrap().to_string()); }
             writeln!(file,"{}", Self::parse(&"symbol".to_string(), &syntax.symbol.unwrap().to_string())).unwrap();
-        } else if state == &mut 5i8 {
+        } else if state == &mut 6i8 {
             *state += 1;
             return Some("statementsFn".to_string());
-        } else if state == &mut 6i8 {
+        } else if state == &mut 7i8 {
             writeln!(file,"{}", Self::parse(&"symbol".to_string(), &syntax.symbol.unwrap().to_string())).unwrap();
             writeln!(file,"</whileStatements>").unwrap();
         }
         *state += 1;
-        if *state == 7 { *state = 0; } 
+        if *state == 8 { *state = 0; } 
         None
 
     }
@@ -154,7 +160,10 @@ impl CompilationEngine {
                     self.stack.push(&f);
                     continue;
                 },
-                None => break,
+                None => {
+                    if state == &mut 0i8 { self.stack.pop() }
+                    break
+                },
             };
         }
     }
