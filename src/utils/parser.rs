@@ -18,6 +18,7 @@ impl StackCompiler {
         list_func.insert("whileFn".to_string(), Box::new(CompilationEngine::while_compiler));
         list_func.insert("statementsFn".to_string(), Box::new(CompilationEngine::statements_compiler));
         list_func.insert("termFn".to_string(), Box::new(CompilationEngine::term_compiler));
+        list_func.insert("letFn".to_string(), Box::new(CompilationEngine::let_compiler));
         Self { 
             list_func: list_func,
             pointer: 0, 
@@ -34,7 +35,9 @@ impl StackCompiler {
     pub fn pop(&mut self) {
         self.stack_compiler.pop();
         self.stack_state.pop();
-        self.pointer = self.stack_compiler.len() - 1;
+        if self.stack_compiler.len() != 0 {
+            self.pointer = self.stack_compiler.len() - 1;
+        }
     }
     pub fn get(&mut self) -> (&mut dyn FnMut(&mut File, &JackTokenizer, &mut i8) -> Option<String>, &mut i8) {
         let key = &self.stack_compiler[self.pointer];
@@ -44,6 +47,16 @@ impl StackCompiler {
     pub fn is_empty(&self) -> bool {
         self.stack_state.is_empty()
     }
+
+    // pub fn len(&self) -> usize {
+    //     self.stack_state.len()
+    // }
+
+    // pub fn clear(&mut self) { 
+    //     self.stack_state.clear();
+    //     self.stack_compiler.clear();
+    //     self.pointer = 0;
+    // }
 }
 
 
@@ -60,39 +73,63 @@ impl CompilationEngine {
         }
     }
     
-    fn expression_compiler(file: &mut File, syntax:&JackTokenizer, state: &mut i8) -> Option<String> {
-        if !vec!["+".to_string(), "-".to_string(), "=".to_string(), "<".to_string(), ">".to_string()].contains(&syntax.symbol.unwrap().to_string()) && state == &mut 1i8 {
-            if syntax.symbol.unwrap().to_string() != ")".to_string() { panic!("add ')' after expression")} 
-            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &syntax.symbol.unwrap().to_string())).unwrap();
-            writeln!(file,"</expression>").unwrap();
-            *state = 0;
-            return None; 
-        }
+    fn expression_compiler(file: &mut File, s:&JackTokenizer, state: &mut i8) -> Option<String> {
         if state == &mut 1i8 {
             writeln!(file,"<expression>").unwrap();
             *state += 1;
             return Some("termFn".to_string());
         } else if state == &mut 2i8 {
-            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &syntax.symbol.unwrap().to_string())).unwrap();
+            if !vec!["+".to_string(), "-".to_string(), "=".to_string(), "<".to_string(), ">".to_string()].contains(&s.symbol.unwrap().to_string()) {
+                writeln!(file,"</expression>").unwrap();
+                *state = 0;
+                return None; 
+            } else {
+                writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.unwrap().to_string())).unwrap();
+            }
         } else if state == &mut 3i8 {
             *state += 1;
             return Some("termFn".to_string());
         } else if state == &mut 4i8 {
             writeln!(file,"</expression>").unwrap();
+            return Some("SavePop".to_string());
         }
         *state += 1;
         if *state == 5 { *state = 0; }
         None
     }
     
-
+    fn let_compiler(file: &mut File, s:&JackTokenizer, state: &mut i8) -> Option<String> {
+        if state == &mut 1i8 {
+            writeln!(file,"<letStatement>").unwrap();
+            if let Some(keyword) = &s.keyword {
+                writeln!(file, "{}", Self::parse(&"keyword".to_string(), keyword));
+            }
+        } else if state == &mut 2i8 {
+            if let Some(syntax) = s.identifier.to_owned() {
+                writeln!(file,"{}", Self::parse(&"identifier".to_string(), &syntax.to_string())).unwrap();              
+            } else { panic!("need a variable name") }
+        } else if state == &mut 3i8 {
+            if let Some(symbol) = s.symbol {
+                writeln!(file,"{}", Self::parse(&"symbol".to_string(), &symbol.to_string())).unwrap();              
+            } else { panic!("need a symbol =") }
+        } else if state == &mut 4i8 {
+            *state += 1;
+            return Some("expressionFn".to_string());
+        } else if state == &mut 5i8 {
+            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.unwrap().to_string())).unwrap();              
+            writeln!(file,"</letStatement>").unwrap();
+        }
+        *state += 1;
+        if *state == 6 { *state = 0; }
+        None
+    }
 
     fn term_compiler(file: &mut File, s:&JackTokenizer, state: &mut i8) -> Option<String> {
         writeln!(file,"<term>");
         if let Some(syntax) = s.int_val {
             writeln!(file,"{}", Self::parse(&"integerConstant".to_string(), &syntax.to_string())).unwrap();
         } 
-        if let Some(syntax) = s.string_val.to_owned() {
+        if let Some(syntax) = s.identifier.to_owned() {
             writeln!(file,"{}", Self::parse(&"identifier".to_string(), &syntax.to_string())).unwrap();
         }  
         writeln!(file,"</term>");
@@ -157,6 +194,10 @@ impl CompilationEngine {
             let (func, state) = self.stack.get();
             match func(&mut self.file, s, state) {
                 Some(f) => {
+                    if f == "SavePop".to_string() { 
+                        self.stack.pop();
+                        continue;
+                    }
                     self.stack.push(&f);
                     continue;
                 },

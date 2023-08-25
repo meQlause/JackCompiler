@@ -1,0 +1,4 @@
+while (count < 1) {
+    let count = count + 1;
+}
+
