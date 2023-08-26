@@ -159,17 +159,22 @@ impl CompilationEngine {
         let statements = vec!["let".to_string(), "while".to_string(), "if".to_string()];
         if state == &mut 1i8 {
             writeln!(file,"<statements>");
+            *state += 1;
+            return Some("SafeIterate".to_string());
+        } else if state == &mut 2i8 {
             if let Some(syntax) = &s.keyword {
                 if !statements.contains(syntax) {panic!("{} not a statement", syntax)}
-                *state += 1;
                 if syntax == &statements[0] {return Some("letFn".to_string());}
                 if syntax == &statements[1] {return Some("whileFn".to_string());}
                 if syntax == &statements[2] {return Some("ifFn".to_string());}
+            } else {
+                *state += 1;
             }
-        } else if state == &mut 2i8 {
+        } else if state == &mut 3i8 {
             *state = 0;
             writeln!(file,"</statements>");
         }
+        
         None
     }
 
@@ -243,8 +248,10 @@ impl CompilationEngine {
             match func(&mut self.file, s, state) {  
                 Some(f) => {
                     if f == "SafePop".to_string() { 
-
                         self.stack.pop();
+                        continue;
+                    }
+                    if f == "SafeIterate".to_string() { 
                         continue;
                     }
                     self.stack.push(&f);
