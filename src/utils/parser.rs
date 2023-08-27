@@ -137,9 +137,12 @@ impl CompilationEngine {
                 writeln!(file,"{}", Self::parse(&"identifier".to_string(), &identifier)).unwrap();
             }
         } else if state == &mut 5i8  { 
-            if let Some(symbol) = s.symbol.to_owned() {
-                writeln!(file,"{}", Self::parse(&"symbol".to_string(), &symbol.to_string())).unwrap();
+            if Some(',') == s.symbol.to_owned() {
+                writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.unwrap().to_string())).unwrap();
                 *state = 3;
+            } else {
+                *state += 1;
+                return Some("SafeIterate".to_string());
             }
         } else if state == &mut 6i8  {
             if ";".to_string() == s.symbol.unwrap().to_string() {
@@ -274,9 +277,10 @@ impl CompilationEngine {
             if Some(',') == s.symbol.to_owned() {
                 writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.unwrap().to_string())).unwrap();
                 *state = 2;
+            } else {
+                *state += 1;
+                return Some("SafeIterate".to_string());
             }
-            *state += 1;
-            return Some("SafeIterate".to_string());
         } else if state == &mut 5i8  {
             println!("{:?}", s.symbol.to_owned());
             if ";".to_string() == s.symbol.unwrap().to_string() {
