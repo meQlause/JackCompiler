@@ -316,6 +316,32 @@ impl CompilationEngine {
         if *state == 5 { *state = 0; }
         None
     }
+
+    fn expression_list_compiler(file: &mut File, s:&JackTokenizer, state: &mut i8) -> Option<String> {
+        if state == &mut 1i8 {
+            writeln!(file,"<expressionList>");
+            *state += 1;
+            return Some("SafeIterate".to_string());
+        } else if state == &mut 2i8 {
+            *state += 1;
+            return Some("expressionFn".to_string());
+        } else if state == &mut 3i8 {
+            if let Some(symbol) = s.symbol { 
+                if symbol == ',' {
+                    writeln!(file,"{}", Self::parse(&"symbol".to_string(), &symbol.to_string())).unwrap();   
+                    *state = 2;
+                    return None;
+                }
+                writeln!(file,"{}", Self::parse(&"symbol".to_string(), &symbol.to_string())).unwrap();   
+                *state = 1 
+            }
+        } else if state == &mut 4i8 {
+            writeln!(file,"</expressionList>");
+        }
+        *state += 1;
+        if state == &mut 5i8 { *state = 0; }
+        None
+    }
     
     fn let_compiler(file: &mut File, s:&JackTokenizer, state: &mut i8) -> Option<String> {
         if state == &mut 1i8 {
