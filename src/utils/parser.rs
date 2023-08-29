@@ -102,8 +102,13 @@ impl CompilationEngine {
                 return Some("classvardecFn".to_string());
             }
         } else if state == &mut 5i8 {
-            *state += 1;
-            return Some("subroutinedecFn".to_string());
+            if !vec!["constructor".to_string(), "function".to_string(), "method".to_string()].contains(&s.keyword.to_owned().unwrap()) { 
+                *state = 4;
+                return Some("SafeIterate".to_string()); 
+            } else {
+                *state += 1;
+                return Some("subroutinedecFn".to_string());
+            }
         } else if state == &mut 6i8 {
             writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.unwrap().to_string())).unwrap();
             writeln!(file,"</class>").unwrap();
@@ -360,7 +365,7 @@ impl CompilationEngine {
                     writeln!(file,"{}", Self::parse(&"symbol".to_string(), &symbol.to_string())).unwrap();              
                 } else if '=' == symbol {
                     writeln!(file,"{}", Self::parse(&"symbol".to_string(), &symbol.to_string())).unwrap();
-                    *state = 7;              
+                    *state = 6;              
                 }
             }
         } else if state == &mut 4i8 {
@@ -374,8 +379,7 @@ impl CompilationEngine {
             }
         } else if state == &mut 6i8 {
             if let Some(symbol) = s.symbol {
-                writeln!(file,"{}", Self::parse(&"symbol".to_string(), &symbol.to_string())).unwrap();
-                *state = 7;              
+                writeln!(file,"{}", Self::parse(&"symbol".to_string(), &symbol.to_string())).unwrap();         
             } else { panic!("expected ="); }
         } else if state == &mut 7i8 {
             *state += 1;
@@ -385,7 +389,7 @@ impl CompilationEngine {
             writeln!(file,"</letStatement>").unwrap();
         }
         *state += 1;
-        if *state == 8 { *state = 0; }
+        if *state == 9 { *state = 0; }
         None
     }
 
