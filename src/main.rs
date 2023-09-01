@@ -10,12 +10,12 @@ fn main() {
     loop {
         if !tokenizer.has_more_token() {
             println!("{:?}", tokenizer.symbol);
-            parser.compile(&tokenizer);
+            parser.compile(&mut tokenizer);
             break;
         }
             println!("{:?}", tokenizer.symbol);
 
-        parser.compile(&tokenizer);
+        parser.compile(&mut tokenizer);
     }
     // match tokenizer.symbol {
     //     Some(a) => println!("{}", a),

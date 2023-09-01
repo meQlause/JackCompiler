@@ -12,13 +12,19 @@ pub struct JackTokenizer {
     symbols: Arc<[String; 19]>,
     keywords: Arc<[String; 21]>,
     tokens: HashMap<i128, Vec<String>>,
+    pub next_token: Option<String>,
     pub keyword: Option<String>,
-    pub symbol: Option<char>,
+    pub symbol: Option<String>,
     pub identifier: Option<String>,
-    pub int_val: Option<i128>,
+    pub int_val: Option<String>,
     pub string_val: Option<String>,
 }
 
+impl PartialEq<String> for JackTokenizer {
+    fn eq(&self, other: &String) -> bool {
+        self.next_token.to_owned().unwrap() == other.to_owned()
+    }
+}
 impl JackTokenizer {
     pub fn new(file_name: &str) -> Self {
         let file = File::open(file_name).expect("Error opening file");
@@ -28,6 +34,7 @@ impl JackTokenizer {
             total_line: 0,
             token_maks: 0usize,
             current_token: 1usize,
+            next_token: None,
             symbols: Arc::new([
                 "{".to_string(),
                 "}".to_string(),
@@ -157,6 +164,24 @@ impl JackTokenizer {
         return false;
     }
 
+    pub fn get_context(&mut self, context: usize) -> Option<String> {
+        let current_token = self.current_token;
+        let token_maks = self.token_maks;
+        let line = self.line;
+        let total_line = self.total_line;
+
+        for _ in 0..context {
+            if !self.get_position() { return None; }
+        }
+        let list_token = self.tokens.get(&self.line).unwrap();
+        let to_return = Some(list_token[self.current_token].to_string());
+        self.current_token = current_token;
+        self.token_maks = token_maks;
+        self.line = line;
+        self.total_line = total_line;
+        to_return
+    }
+
     fn advance(&mut self) {
         let list_token = self.tokens.get(&self.line).unwrap();
         if self.keywords.contains(&list_token[self.current_token]) {
@@ -169,7 +194,7 @@ impl JackTokenizer {
         }
         if self.symbols.contains(&list_token[self.current_token]) {
             self.keyword = None;
-            self.symbol = list_token[self.current_token].chars().next();
+            self.symbol = Some(list_token[self.current_token].to_string());
             self.identifier = None;
             self.int_val = None;
             self.string_val = None;
@@ -180,7 +205,7 @@ impl JackTokenizer {
                 self.keyword = None;
                 self.symbol = None;
                 self.identifier = None;
-                self.int_val = Some(a);
+                self.int_val = Some(a.to_string());
                 self.string_val = None;
                 return;
             }

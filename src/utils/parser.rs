@@ -35,6 +35,7 @@ impl StackCompiler {
         list_func.insert("parameterlistFn".to_string(), Box::new(CompilationEngine::parameter_list_compiler));
         list_func.insert("expressionlistFn".to_string(), Box::new(CompilationEngine::parameter_list_compiler));
         list_func.insert("subroutinebodyFn".to_string(), Box::new(CompilationEngine::subroutine_body_compiler));
+        list_func.insert("subroutinecallFn".to_string(), Box::new(CompilationEngine::subroutine_call_compiler));
         list_func.insert("vardecFn".to_string(), Box::new(CompilationEngine::var_dec_compiler));
         Self { 
             list_func: list_func,
@@ -94,8 +95,8 @@ impl CompilationEngine {
                 panic!("invalid class name");
             }
         } else if state == &mut 3i8 {
-            if "{".to_string() != s.symbol.unwrap().to_string() { panic!("expected {{, found {}", s.symbol.unwrap().to_string()); }
-            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.unwrap().to_string())).unwrap();
+            if "{".to_string() != s.symbol.to_owned().unwrap().to_string() { panic!("expected {{, found {}", s.symbol.to_owned().unwrap().to_string()); }
+            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.to_owned().unwrap().to_string())).unwrap();
         } else if state == &mut 4i8 {
             if let Some(_) = s.keyword {
                 *state += 1;
@@ -110,7 +111,7 @@ impl CompilationEngine {
                 return Some("subroutinedecFn".to_string());
             }
         } else if state == &mut 6i8 {
-            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.unwrap().to_string())).unwrap();
+            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.to_owned().unwrap().to_string())).unwrap();
             writeln!(file,"</class>").unwrap();
         }
         *state += 1;
@@ -143,16 +144,16 @@ impl CompilationEngine {
                 writeln!(file,"{}", Self::parse(&"identifier".to_string(), &identifier)).unwrap();
             }
         } else if state == &mut 5i8  { 
-            if Some(',') == s.symbol.to_owned() {
-                writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.unwrap().to_string())).unwrap();
+            if Some(",".to_string()) == s.symbol.to_owned() {
+                writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.to_owned().unwrap().to_string())).unwrap();
                 *state = 3;
             } else {
                 *state += 1;
                 return Some("SafeIterate".to_string());
             }
         } else if state == &mut 6i8  {
-            if ";".to_string() == s.symbol.unwrap().to_string() {
-                writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.unwrap().to_string())).unwrap();   
+            if ";".to_string() == s.symbol.to_owned().unwrap().to_string() {
+                writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.to_owned().unwrap().to_string())).unwrap();   
                 writeln!(file,"</classVarDec>");
             } else { panic!("expected ; found after statement"); }
         }
@@ -183,15 +184,15 @@ impl CompilationEngine {
                 writeln!(file,"{}", Self::parse(&"identifier".to_string(), &identifier)).unwrap();   
             }
         } else if state == &mut 5i8  {
-            if "(".to_string() == s.symbol.unwrap().to_string() {
-                writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.unwrap().to_string())).unwrap();   
+            if "(".to_string() == s.symbol.to_owned().unwrap().to_string() {
+                writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.to_owned().unwrap().to_string())).unwrap();   
             } else { panic!("expected ( found after subroutine name"); }
         } else if state == &mut 6i8  {
             *state += 1;
             return Some("parameterlistFn".to_string());
         } else if state == &mut 7i8  {
-            if ")".to_string() == s.symbol.unwrap().to_string() {
-                writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.unwrap().to_string())).unwrap();   
+            if ")".to_string() == s.symbol.to_owned().unwrap().to_string() {
+                writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.to_owned().unwrap().to_string())).unwrap();   
             } else { panic!("expected )"); }
         } else if state == &mut 8i8  {
             *state += 1;
@@ -205,6 +206,43 @@ impl CompilationEngine {
         None
     }
 
+    fn subroutine_call_compiler(file: &mut File, s:&JackTokenizer, state: &mut i8) -> Option<String> {
+        if state == &mut 1i8 {
+            writeln!(file,"<subroutineCall>");
+            writeln!(file,"{}", Self::parse(&"identifier".to_string(), &s.identifier.as_ref().unwrap().to_string())).unwrap();   
+        } else if state == &mut 2i8 {
+            if let Some(symbol) = s.symbol.to_owned() {
+                if "(".to_string() == symbol { 
+                    writeln!(file,"{}", Self::parse(&"symbol".to_string(), &symbol.to_string())).unwrap();   
+                    *state = 4;
+                } else if ".".to_string() == symbol {
+                    writeln!(file,"{}", Self::parse(&"symbol".to_string(), &symbol.to_string())).unwrap();   
+                } else {panic!("expected symbol")}
+            } 
+        } else if state == &mut 3i8 {
+            writeln!(file,"{}", Self::parse(&"identifier".to_string(), &s.identifier.to_owned().unwrap())).unwrap();   
+        } else if state == &mut 4i8 {
+            if let Some(symbol) = s.symbol.to_owned() {
+                if "(".to_string() == symbol { 
+                    writeln!(file,"{}", Self::parse(&"symbol".to_string(), &symbol.to_string())).unwrap();
+                }
+            }
+        } else if state == &mut 5i8 {
+            *state += 1;
+            return Some("expressionFn".to_string());
+        } else if state == &mut 6i8 {
+            if let Some(symbol) = s.symbol.to_owned() {
+                if ")".to_string() == symbol { 
+                    writeln!(file,"{}", Self::parse(&"symbol".to_string(), &symbol.to_string())).unwrap();
+                    writeln!(file,"</subroutineCall>");
+                } else { panic!("expected symbol"); }
+            }
+        }
+        *state += 1;
+        if state == &mut 7i8 { *state = 0; }
+        None
+
+    }
     fn parameter_list_compiler(file: &mut File, s:&JackTokenizer, state: &mut i8) -> Option<String> {
         if state == &mut 1i8 {
             writeln!(file,"<parameterList>");
@@ -225,8 +263,8 @@ impl CompilationEngine {
                 writeln!(file,"{}", Self::parse(&"identifier".to_string(), &identifier)).unwrap();   
             } else { panic!("expect variable name"); }
         } else if state == &mut 4i8 {
-            if let Some(symbol) = s.symbol { 
-                if symbol == ',' {
+            if let Some(symbol) = s.symbol.to_owned() { 
+                if symbol == ",".to_string() {
                     *state = 2;
                     return None;
                 }
@@ -244,8 +282,8 @@ impl CompilationEngine {
     fn subroutine_body_compiler(file: &mut File, s:&JackTokenizer, state: &mut i8) -> Option<String> {
         if state == &mut 1i8 {
             writeln!(file,"<subroutineBody>").unwrap();
-            if "{".to_string() != s.symbol.unwrap().to_string() { panic!("expected {{"); }
-            writeln!(file,"{}", Self::parse(&"keyword".to_string(), &s.symbol.as_ref().unwrap().to_string())).unwrap();
+            if "{".to_string() != s.symbol.to_owned().unwrap().to_string() { panic!("expected {{"); }
+            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.as_ref().unwrap().to_string())).unwrap();
         } else if state == &mut 2i8 {
             *state += 1;
             return Some("vardecFn".to_string()); 
@@ -253,8 +291,8 @@ impl CompilationEngine {
             *state += 1;
             return Some("statementsFn".to_string()); 
         } else if state == &mut 4i8 {
-            if "}".to_string() != s.symbol.unwrap().to_string() { panic!("expected {{"); }
-                writeln!(file,"{}", Self::parse(&"keyword".to_string(), &s.symbol.as_ref().unwrap().to_string())).unwrap();
+            if "}".to_string() != s.symbol.to_owned().unwrap().to_string() { panic!("expected {{"); }
+                writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.as_ref().unwrap().to_string())).unwrap();
                 writeln!(file,"</subroutineBody>").unwrap();
                 return Some("SafePop".to_string());
             }
@@ -280,8 +318,8 @@ impl CompilationEngine {
                 writeln!(file,"{}", Self::parse(&"identifier".to_string(), &identifier)).unwrap();
             }
         } else if state == &mut 4i8  { 
-            if Some(',') == s.symbol.to_owned() {
-                writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.unwrap().to_string())).unwrap();
+            if Some(','.to_string()) == s.symbol.to_owned() {
+                writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.to_owned().unwrap().to_string())).unwrap();
                 *state = 2;
             } else {
                 *state += 1;
@@ -289,8 +327,8 @@ impl CompilationEngine {
             }
         } else if state == &mut 5i8  {
             println!("{:?}", s.symbol.to_owned());
-            if ";".to_string() == s.symbol.unwrap().to_string() {
-                writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.unwrap().to_string())).unwrap();   
+            if ";".to_string() == s.symbol.to_owned().unwrap().to_string() {
+                writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.to_owned().unwrap().to_string())).unwrap();   
                 writeln!(file,"</varDec>");
             } else { panic!("expected ; found after statement"); }
         }
@@ -305,11 +343,11 @@ impl CompilationEngine {
             *state += 1;
             return Some("termFn".to_string());
         } else if state == &mut 2i8 {
-            if !vec!["+".to_string(), "-".to_string(), "=".to_string(), "<".to_string(), ">".to_string(), "&".to_string(), "||".to_string()].contains(&s.symbol.unwrap().to_string()) {
+            if !vec!["+".to_string(), "-".to_string(), "=".to_string(), "<".to_string(), ">".to_string(), "&".to_string(), "||".to_string()].contains(&s.symbol.to_owned().unwrap().to_string()) {
                 writeln!(file,"</expression>").unwrap();
                 return Some("SafePop".to_string());
             } else {
-                writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.unwrap().to_string())).unwrap();
+                writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.to_owned().unwrap().to_string())).unwrap();
             }
         } else if state == &mut 3i8 {
             *state += 1;
@@ -332,8 +370,8 @@ impl CompilationEngine {
             *state += 1;
             return Some("expressionFn".to_string());
         } else if state == &mut 3i8 {
-            if let Some(symbol) = s.symbol { 
-                if symbol == ',' {
+            if let Some(symbol) = s.symbol.to_owned() { 
+                if symbol == ",".to_string() {
                     writeln!(file,"{}", Self::parse(&"symbol".to_string(), &symbol.to_string())).unwrap();   
                     *state = 2;
                     return None;
@@ -360,10 +398,10 @@ impl CompilationEngine {
                 writeln!(file,"{}", Self::parse(&"identifier".to_string(), &syntax.to_string())).unwrap();              
             } else { panic!("need a variable name") }
         } else if state == &mut 3i8 {
-            if let Some(symbol) = s.symbol {
-                if '[' == symbol {
+            if let Some(symbol) = s.symbol.to_owned() {
+                if "[".to_string() == symbol {
                     writeln!(file,"{}", Self::parse(&"symbol".to_string(), &symbol.to_string())).unwrap();              
-                } else if '=' == symbol {
+                } else if "=".to_string() == symbol {
                     writeln!(file,"{}", Self::parse(&"symbol".to_string(), &symbol.to_string())).unwrap();
                     *state = 6;              
                 }
@@ -372,20 +410,20 @@ impl CompilationEngine {
             *state += 1;
             return Some("expressionFn".to_string());
         } else if state == &mut 5i8 {
-            if let Some(symbol) = s.symbol {
-                if ']' == symbol {
+            if let Some(symbol) = s.symbol.to_owned() {
+                if "]".to_string() == symbol {
                     writeln!(file,"{}", Self::parse(&"symbol".to_string(), &symbol.to_string())).unwrap();
                 }
             }
         } else if state == &mut 6i8 {
-            if let Some(symbol) = s.symbol {
+            if let Some(symbol) = s.symbol.to_owned() {
                 writeln!(file,"{}", Self::parse(&"symbol".to_string(), &symbol.to_string())).unwrap();         
             } else { panic!("expected ="); }
         } else if state == &mut 7i8 {
             *state += 1;
             return Some("expressionFn".to_string());
         } else if state == &mut 8i8 {
-            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.unwrap().to_string())).unwrap();              
+            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.to_owned().unwrap().to_string())).unwrap();              
             writeln!(file,"</letStatement>").unwrap();
         }
         *state += 1;
@@ -396,30 +434,81 @@ impl CompilationEngine {
     fn term_compiler(file: &mut File, s:&JackTokenizer, state: &mut i8) -> Option<String> {
         if state == &mut 1i8 {
             writeln!(file,"<term>");
-            if let Some(symbol) = s.symbol { 
-                writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.unwrap().to_string())).unwrap();
-            } else {
-                if let Some(syntax) = s.int_val {
-                    writeln!(file,"{}", Self::parse(&"integerConstant".to_string(), &syntax.to_string())).unwrap();
-                    writeln!(file,"</term>");
+            if let Some(symbol) = s.symbol.to_owned() { 
+                if symbol == "(".to_string() {
+                    writeln!(file,"{}", Self::parse(&"symbol".to_string(), &symbol.to_string())).unwrap();
+                    *state = 2;
+
                 } 
-                if let Some(syntax) = s.identifier.to_owned() {
+                if symbol == "~".to_string() || symbol == "-".to_string() { 
+                    writeln!(file,"{}", Self::parse(&"symbol".to_string(), &symbol.to_string())).unwrap();
+                    *state = 3;
+                }
+            } else if let Some(syntax) = &s.int_val {
+                writeln!(file,"{}", Self::parse(&"integerConstant".to_string(), &syntax.to_string())).unwrap();
+                *state = 8;
+            } else if let Some(syntax) = s.identifier.to_owned() {
+                if vec!["true".to_string(), "false".to_string(), "null".to_string(), "this".to_string()].contains(&syntax) {
+                    writeln!(file,"{}", Self::parse(&"keywordConstant".to_string(), &syntax.to_string())).unwrap();
+                    *state = 8;
+                } else {
                     writeln!(file,"{}", Self::parse(&"identifier".to_string(), &syntax.to_string())).unwrap();
-                    writeln!(file,"</term>");
-                }  
+                }
+            } else if let Some(syntax) = s.string_val.to_owned() {
+                writeln!(file,"{}", Self::parse(&"stringConstant".to_string(), &syntax.to_string())).unwrap();
+                *state = 8;
+            }  
+        }
+        else if state == &mut 2i8 {
+            if ";".to_string() == s.symbol.to_owned().unwrap().to_string() { 
+                writeln!(file,"</term>");
                 *state = 0;
-                return None
+                return Some("SafePop".to_string());
+            } else if "[".to_string() == s.symbol.to_owned().unwrap().to_string() {
+                *state = 4;
+            } else {
+                writeln!(file,"</term>");
+                *state = 0;
+                return Some("SafePop".to_string());
             }
-        } else if state == &mut 2i8 {
+        }
+
+        else if state == &mut 3i8 {
             *state += 1;
             return Some("expressionFn".to_string());
-        } else if state == &mut 3i8 {
-            if ")".to_string() != s.symbol.unwrap().to_string() { panic!("expected ), found {}", s.symbol.unwrap().to_string()); }
-            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.unwrap().to_string())).unwrap();
+        } else if state == &mut 4i8 {
+            if ")".to_string() != s.symbol.to_owned().unwrap().to_string() { panic!("expected ), found {}", s.symbol.to_owned().unwrap().to_string()); }
+            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.to_owned().unwrap().to_string())).unwrap();
             writeln!(file,"</term>");
+            *state = 0;
+            return None;
+        } 
+        
+        else if state == &mut 5i8 {
+            *state += 1;
+            return Some("expressionFn".to_string());
+        } else if state == &mut 6i8 {
+            if "]".to_string() != s.symbol.to_owned().unwrap().to_string() { panic!("expected ), found {}", s.symbol.to_owned().unwrap().to_string()); }
+            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &s.symbol.to_owned().unwrap().to_string())).unwrap();
+            writeln!(file,"</term>");
+            *state = 0;
+            return None;
+        } 
+        else if state == &mut 7i8 {
+            *state += 1;
+            return Some("termFn".to_string());
+        }
+        else if state == &mut 8i8 {
+            writeln!(file,"</term>");
+
+        }
+        else if state == &mut 9i8 {
+            writeln!(file,"</term>");
+            return Some("SafePop".to_string());
+
         }
         *state += 1;
-        if state ==  &mut 4i8 { *state = 0; }
+        if state ==  &mut 10i8 { *state = 0; }
         None
     }
 
@@ -451,22 +540,22 @@ impl CompilationEngine {
             writeln!(file,"<whileStatement>").unwrap();
             writeln!(file,"{}", Self::parse(&"keyword".to_string(), &syntax.keyword.as_ref().unwrap().to_string())).unwrap();
         } else if state == &mut 2i8 {
-            if "(".to_string() != syntax.symbol.unwrap().to_string() { panic!("expected (, found {}", syntax.symbol.unwrap().to_string()); }
-            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &syntax.symbol.unwrap().to_string())).unwrap();
+            if "(".to_string() != syntax.symbol.to_owned().unwrap().to_string() { panic!("expected (, found {}", syntax.symbol.to_owned().unwrap().to_string()); }
+            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &syntax.symbol.to_owned().unwrap().to_string())).unwrap();
         } else if state == &mut 3i8 {
             *state += 1;
             return Some("expressionFn".to_string());
         } else if state == &mut 4i8 {
-            if ")".to_string() != syntax.symbol.unwrap().to_string() { panic!("expected ), found {}", syntax.symbol.unwrap().to_string()); }
-            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &syntax.symbol.unwrap().to_string())).unwrap();
+            if ")".to_string() != syntax.symbol.to_owned().unwrap().to_string() { panic!("expected ), found {}", syntax.symbol.to_owned().unwrap().to_string()); }
+            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &syntax.symbol.to_owned().unwrap().to_string())).unwrap();
         } else if state == &mut 5i8 {
-            if "{".to_string() != syntax.symbol.unwrap().to_string() { panic!("expected {{, found {}", syntax.symbol.unwrap().to_string()); }
-            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &syntax.symbol.unwrap().to_string())).unwrap();
+            if "{".to_string() != syntax.symbol.to_owned().unwrap().to_string() { panic!("expected {{, found {}", syntax.symbol.to_owned().unwrap().to_string()); }
+            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &syntax.symbol.to_owned().unwrap().to_string())).unwrap();
         } else if state == &mut 6i8 {
             *state += 1;
             return Some("statementsFn".to_string());
         } else if state == &mut 7i8 {
-            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &syntax.symbol.unwrap().to_string())).unwrap();
+            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &syntax.symbol.to_owned().unwrap().to_string())).unwrap();
             writeln!(file,"</whileStatement>").unwrap();
         }
         *state += 1;
@@ -481,22 +570,22 @@ impl CompilationEngine {
             writeln!(file,"<ifStatement>").unwrap();
             writeln!(file,"{}", Self::parse(&"keyword".to_string(), &syntax.keyword.as_ref().unwrap().to_string())).unwrap();
         } else if state == &mut 2i8 {
-            if "(".to_string() != syntax.symbol.unwrap().to_string() { panic!("expected (, found {}", syntax.symbol.unwrap().to_string()); }
-            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &syntax.symbol.unwrap().to_string())).unwrap();
+            if "(".to_string() != syntax.symbol.to_owned().unwrap().to_string() { panic!("expected (, found {}", syntax.symbol.to_owned().unwrap().to_string()); }
+            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &syntax.symbol.to_owned().unwrap().to_string())).unwrap();
         } else if state == &mut 3i8 {
             *state += 1;
             return Some("expressionFn".to_string());
         } else if state == &mut 4i8 {
-            if ")".to_string() != syntax.symbol.unwrap().to_string() { panic!("expected ), found {}", syntax.symbol.unwrap().to_string()); }
-            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &syntax.symbol.unwrap().to_string())).unwrap();
+            if ")".to_string() != syntax.symbol.to_owned().unwrap().to_string() { panic!("expected ), found {}", syntax.symbol.to_owned().unwrap().to_string()); }
+            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &syntax.symbol.to_owned().unwrap().to_string())).unwrap();
         } else if state == &mut 5i8 {
-            if "{".to_string() != syntax.symbol.unwrap().to_string() { panic!("expected {{, found {}", syntax.symbol.unwrap().to_string()); }
-            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &syntax.symbol.unwrap().to_string())).unwrap();
+            if "{".to_string() != syntax.symbol.to_owned().unwrap().to_string() { panic!("expected {{, found {}", syntax.symbol.to_owned().unwrap().to_string()); }
+            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &syntax.symbol.to_owned().unwrap().to_string())).unwrap();
         } else if state == &mut 6i8 {
             *state += 1;
             return Some("statementsFn".to_string());
         } else if state == &mut 7i8 {
-            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &syntax.symbol.unwrap().to_string())).unwrap();
+            writeln!(file,"{}", Self::parse(&"symbol".to_string(), &syntax.symbol.to_owned().unwrap().to_string())).unwrap();
             writeln!(file,"</ifStatement>").unwrap();
         }
         *state += 1;
@@ -508,7 +597,7 @@ impl CompilationEngine {
     fn parse(p:&String, c:&String) -> String {
         format!("<{p}>{c}</{p}>", p=p, c=c)
     }
-    pub fn compile(&mut self, s:&JackTokenizer) {
+    pub fn compile(&mut self, s:&mut JackTokenizer) {
         if self.stack.is_empty() {self.stack.push(&"classFn".to_string());}
         loop {
             let (func, state) = self.stack.get();
@@ -520,6 +609,10 @@ impl CompilationEngine {
                         continue;
                     }
                     if f == "SafeIterate".to_string() { 
+                        continue;
+                    }
+                    if f == "termFn".to_string() && s.get_context(1) == Some(".".to_string()) { 
+                        self.stack.push(&"subroutinecallFn".to_string());
                         continue;
                     }
                     self.stack.push(&f);
