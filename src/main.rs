@@ -9,11 +9,9 @@ fn main() {
 
     loop {
         if !tokenizer.has_more_token() {
-            println!("{:?}", tokenizer.symbol);
-            parser.compile(&mut tokenizer);
             break;
         }
-            println!("{:?}", tokenizer.symbol);
+        println!("{:?} qwe", tokenizer.symbol);
 
         parser.compile(&mut tokenizer);
     }
