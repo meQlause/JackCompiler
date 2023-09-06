@@ -388,7 +388,7 @@ impl CompilationEngine {
             return Some("termFn".to_string());
         } else if state == &mut 2i8 { 
             if s.symbol.is_some() {
-                if !vec!["+".to_string(), "-".to_string(), "=".to_string(), "<".to_string(), ">".to_string(), "&".to_string(), "||".to_string()].contains(&s.symbol.to_owned().unwrap().to_string()) {
+                if !vec!["+".to_string(), "*".to_string(), "/".to_string(), "-".to_string(), "=".to_string(), "<".to_string(), ">".to_string(), "&".to_string(), "||".to_string()].contains(&s.symbol.to_owned().unwrap().to_string()) {
                     writeln!(file,"</expression>").unwrap();
                     return Some("SafePop".to_string());
                 } else {

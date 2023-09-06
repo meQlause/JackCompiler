@@ -90,15 +90,28 @@ impl JackTokenizer {
 
     fn tokenizer(&mut self) {
         for lines in BufReader::new(&self.file).lines() {
+            let mut not_comment = false;
             let (line_to_read, mut syntax, mut is_string) =
                 (lines.expect("Can't read line"), String::new(), false);
             self.total_line += 1;
-            if line_to_read.trim().as_bytes().len() == 0 || line_to_read.chars().next() == Some('/')
+            if line_to_read.trim().as_bytes().len() == 0 || line_to_read.trim().chars().next() == Some('/') || line_to_read.trim().chars().next() == Some('*')
             {
                 continue;
             }
             self.tokens.insert(self.total_line, Vec::new());
             for c in line_to_read.chars() {
+                if c == '/' {
+                    if not_comment {
+                        not_comment = false;
+                        break;
+                    }
+                    not_comment = true;
+                    continue;
+                } else if not_comment {
+                    let value = self.tokens.get_mut(&self.total_line).expect("Invalid key");
+                    value.push('/'.to_string());
+                    not_comment = false;
+                }
                 if c == '"' || is_string {
                     if syntax.contains('"') && c == '"' {
                         syntax.push(c);
