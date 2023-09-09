@@ -22,14 +22,14 @@ pub struct JackTokenizer {
 
 impl PartialEq<String> for JackTokenizer {
     fn eq(&self, other: &String) -> bool {
-        self.next_token.to_owned().unwrap() == other.to_owned()
+        self.next_token.to_owned().unwrap() == *other
     }
 }
 impl JackTokenizer {
     pub fn new(file_name: &str) -> Self {
         let file = File::open(file_name).expect("Error opening file");
         Self {
-            file: file,
+            file,
             line: -1,
             total_line: 0,
             token_maks: 0usize,
@@ -94,7 +94,7 @@ impl JackTokenizer {
             let (line_to_read, mut syntax, mut is_string) =
                 (lines.expect("Can't read line"), String::new(), false);
             self.total_line += 1;
-            if line_to_read.trim().as_bytes().len() == 0 || line_to_read.trim().chars().next() == Some('/') || line_to_read.trim().chars().next() == Some('*')
+            if line_to_read.is_empty() || line_to_read.trim().starts_with('/') || line_to_read.trim().starts_with('*')
             {
                 continue;
             }
@@ -163,18 +163,18 @@ impl JackTokenizer {
             }
         } else {
             self.current_token += 1;
-            return true;
+            true
         }
     }
     pub fn has_more_token(&mut self) -> bool {
-        if self.tokens.len() < 1 {
+        if self.tokens.is_empty() {
             self.tokenizer()
         }
         if self.get_position() {
             self.advance();
             return true;
         }
-        return false;
+        false
     }
 
     pub fn get_context(&mut self, context: usize) -> Option<String> {
@@ -203,7 +203,6 @@ impl JackTokenizer {
             self.identifier = None;
             self.int_val = None;
             self.string_val = None;
-            return;
         }
         if self.symbols.contains(&list_token[self.current_token]) {
             self.keyword = None;
@@ -211,7 +210,6 @@ impl JackTokenizer {
             self.identifier = None;
             self.int_val = None;
             self.string_val = None;
-            return;
         }
         match list_token[self.current_token].parse::<i128>() {
             Ok(a) => {
@@ -220,23 +218,20 @@ impl JackTokenizer {
                 self.identifier = None;
                 self.int_val = Some(a.to_string());
                 self.string_val = None;
-                return;
             }
             Err(_) => {
-                if list_token[self.current_token].chars().next() == Some('"') {
+                if list_token[self.current_token].starts_with('"') {
                     self.keyword = None;
                     self.symbol = None;
                     self.identifier = None;
                     self.int_val = None;
                     self.string_val = Some(list_token[self.current_token].to_string());
-                    return;
                 }
                 self.keyword = None;
                 self.symbol = None;
                 self.identifier = Some(list_token[self.current_token].to_string());
                 self.int_val = None;
                 self.string_val = None;
-                return;
             }
         }
     }
