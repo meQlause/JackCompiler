@@ -1,40 +1,34 @@
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::sync::Arc;
 
+pub enum TokenKind {
+    Keyword,
+    Symbol,
+    Identifier,
+    IntVal,
+    StringVal,
+}
 pub struct JackTokenizer {
-    file: File,
-    line: i128,
-    total_line: i128,
-    token_maks: usize,
-    current_token: usize,
+    file_name: String,
     symbols: Arc<[String; 19]>,
     keywords: Arc<[String; 21]>,
-    tokens: HashMap<i128, Vec<String>>,
-    pub next_token: Option<String>,
-    pub keyword: Option<String>,
-    pub symbol: Option<String>,
-    pub identifier: Option<String>,
-    pub int_val: Option<String>,
-    pub string_val: Option<String>,
+    line_string: String,
+    pub current_line_position: usize,
+    pub current_char_position: usize,
+    pub token_kinds: Vec<TokenKind>,
+    pub tokens: Vec<String>,
 }
 
-impl PartialEq<String> for JackTokenizer {
-    fn eq(&self, other: &String) -> bool {
-        self.next_token.to_owned().unwrap() == *other
-    }
-}
 impl JackTokenizer {
     pub fn new(file_name: &str) -> Self {
-        let file = File::open(file_name).expect("Error opening file");
         Self {
-            file,
-            line: -1,
-            total_line: 0,
-            token_maks: 0usize,
-            current_token: 1usize,
-            next_token: None,
+            file_name: file_name.to_string(),
+            current_line_position: 1usize,
+            current_char_position: 0usize,
+            line_string: String::new(),
+            tokens: Vec::new(),
+            token_kinds: Vec::new(),
             symbols: Arc::new([
                 "{".to_string(),
                 "}".to_string(),
@@ -79,160 +73,111 @@ impl JackTokenizer {
                 "while".to_string(),
                 "return".to_string(),
             ]),
-            tokens: HashMap::new(),
-            keyword: None,
-            symbol: None,
-            identifier: None,
-            int_val: None,
-            string_val: None,
         }
     }
 
-    fn tokenizer(&mut self) {
-        for lines in BufReader::new(&self.file).lines() {
-            let mut not_comment = false;
-            let (line_to_read, mut syntax, mut is_string) =
-                (lines.expect("Can't read line"), String::new(), false);
-            self.total_line += 1;
-            if line_to_read.is_empty() || line_to_read.trim().starts_with('/') || line_to_read.trim().starts_with('*')
-            {
+    fn get_line_string(&mut self) -> Option<String> {
+        let file_name = self.file_name.clone();
+        for (count, line) in BufReader::new(File::open(file_name).expect("Can't Read The File")).lines().enumerate() {
+            let line_to_read = line.unwrap();
+            if line_to_read.trim().is_empty() || line_to_read.trim().starts_with('/') || line_to_read.trim().starts_with('*') {
                 continue;
             }
-            self.tokens.insert(self.total_line, Vec::new());
-            for c in line_to_read.chars() {
-                if c == '/' {
-                    if not_comment {
-                        not_comment = false;
-                        break;
-                    }
-                    not_comment = true;
-                    continue;
-                } else if not_comment {
-                    let value = self.tokens.get_mut(&self.total_line).expect("Invalid key");
-                    value.push('/'.to_string());
-                    not_comment = false;
+            if count >= self.current_line_position {
+                self.current_line_position = count + 1;
+                return Some(line_to_read.trim().to_string());
+            }
+        }
+        None
+    }
+
+    fn get_token(&mut self) -> Option<String> {
+        loop {
+            let (mut syntax, mut is_string) = (String::new(), false);
+            if self.current_char_position == 0 || self.current_char_position == self.line_string.len() {
+                self.line_string = self.get_line_string()?;
+                self.current_char_position = 0;
+            }
+            for character in self.line_string.chars().skip(self.current_char_position) {
+                self.current_char_position += 1;
+                // In-code Comment Handling
+                if character == '/' && self.line_string.chars().nth(self.current_char_position) == Some('/'){
+                    self.current_char_position = self.line_string.len();
+                    break;
                 }
-                if c == '"' || is_string {
-                    if syntax.contains('"') && c == '"' {
-                        syntax.push(c);
+
+                // String Handling
+                if character == '"' || is_string {
+                    if syntax.contains('"') && character == '"' {
                         is_string = false;
+                        syntax.push(character);
                         continue;
                     }
-                    syntax.push(c);
                     is_string = true;
+                    syntax.push(character);
                     continue;
                 }
-                if c == ' ' {
+
+                // Character Break With Space Handling
+                if character == ' ' {
                     syntax = syntax.trim().to_string();
-                    if !syntax.is_empty() {
-                        let value = self.tokens.get_mut(&self.total_line).expect("Invalid key");
-                        value.push(syntax.to_string());
-                        syntax.clear();
+                    if syntax.is_empty() {
+                        continue;
                     }
-                    continue;
+                    return Some(syntax);
                 }
-                if self.symbols.contains(&c.to_string()) {
+
+                // Character Break With symbols Handling
+                if self.symbols.contains(&character.to_string()) {
                     syntax = syntax.trim().to_string();
-                    if !syntax.is_empty() {
-                        let value = self.tokens.get_mut(&self.total_line).expect("Invalid key");
-                        value.push(syntax.to_string());
-                        syntax.clear();
+                    if syntax.is_empty() {
+                        return Some(character.to_string());
                     }
-                    let value = self.tokens.get_mut(&self.total_line).expect("Invalid key");
-                    value.push(c.to_string());
-                    continue;
+                    self.current_char_position -= 1;
+                    return Some(syntax);
                 }
-                syntax.push(c);
+                syntax.push(character);
             }
         }
-        dbg!("{:?}", &self.tokens);
     }
 
-    fn get_position(&mut self) -> bool {
-        if self.current_token >= self.token_maks {
-            loop {
-                self.line += 1;
-                if self.line > self.total_line {
-                    return false;
-                }
-                if let Some(list_token) = self.tokens.get(&self.line) {
-                    self.token_maks = list_token.len() - 1;
-                    self.current_token = 0;
-                    return true;
-                }
-            }
-        } else {
-            self.current_token += 1;
-            true
-        }
-    }
-    pub fn has_more_token(&mut self) -> bool {
-        if self.tokens.is_empty() {
-            self.tokenizer()
-        }
-        if self.get_position() {
-            self.advance();
-            return true;
-        }
-        false
-    }
-
-    pub fn get_context(&mut self, context: usize) -> Option<String> {
-        let current_token = self.current_token;
-        let token_maks = self.token_maks;
-        let line = self.line;
-        let total_line = self.total_line;
-
+    pub fn has_more_token(&mut self, context :usize) -> Option<bool> {
+        let (temp_line, temp_char) = (self.current_line_position.to_owned(), self.current_char_position.to_owned());
+        self.tokens.clear();
+        self.token_kinds.clear();
         for _ in 0..context {
-            if !self.get_position() { return None; }
+            if let Some(token) = self.get_token() {
+                let token_kind = self.set_token_kind(&token);
+                self.token_kinds.push(token_kind);
+                self.tokens.push(token);
+                continue;
+            }
+            self.current_line_position = temp_line - 1 ;
+            self.current_char_position = temp_char;
+            self.line_string = self.get_line_string().unwrap_or(String::new());
+            self.tokens.clear();
+            self.token_kinds.clear();
+            break;
         }
-        let list_token = self.tokens.get(&self.line).unwrap();
-        let to_return = Some(list_token[self.current_token].to_string());
-        self.current_token = current_token;
-        self.token_maks = token_maks;
-        self.line = line;
-        self.total_line = total_line;
-        to_return
+        if self.tokens.len() != context { 
+            return None 
+        }
+        Some(true)
     }
 
-    fn advance(&mut self) {
-        let list_token = self.tokens.get(&self.line).unwrap();
-        if self.keywords.contains(&list_token[self.current_token]) {
-            self.keyword = Some(list_token[self.current_token].to_string());
-            self.symbol = None;
-            self.identifier = None;
-            self.int_val = None;
-            self.string_val = None;
+    fn set_token_kind(&mut self, token: &String) -> TokenKind {
+        if self.keywords.contains(token) {
+            return TokenKind::Keyword;
         }
-        if self.symbols.contains(&list_token[self.current_token]) {
-            self.keyword = None;
-            self.symbol = Some(list_token[self.current_token].to_string());
-            self.identifier = None;
-            self.int_val = None;
-            self.string_val = None;
+        if self.symbols.contains(token) {
+            return TokenKind::Symbol;
         }
-        match list_token[self.current_token].parse::<i128>() {
-            Ok(a) => {
-                self.keyword = None;
-                self.symbol = None;
-                self.identifier = None;
-                self.int_val = Some(a.to_string());
-                self.string_val = None;
-            }
-            Err(_) => {
-                if list_token[self.current_token].starts_with('"') {
-                    self.keyword = None;
-                    self.symbol = None;
-                    self.identifier = None;
-                    self.int_val = None;
-                    self.string_val = Some(list_token[self.current_token].to_string());
-                }
-                self.keyword = None;
-                self.symbol = None;
-                self.identifier = Some(list_token[self.current_token].to_string());
-                self.int_val = None;
-                self.string_val = None;
-            }
+        if token.parse::<i128>().is_ok() {
+            return TokenKind::IntVal;
         }
+        if token.starts_with('"') {
+            return TokenKind::StringVal;
+        }
+        TokenKind::Identifier
     }
 }
