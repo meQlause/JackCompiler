@@ -1,27 +1,22 @@
+mod prelude;
 mod utils;
-// use std::fs::File;
-use utils::jack_tokenizer::JackTokenizer;
-// use utils::parser::CompilationEngine;
+mod errors;
+use prelude::*;
 
 fn main() {
     // let mut parser = CompilationEngine::new(File::create("Main.xml").unwrap());
-    
-    //// Jack Tokenizer Test
-    // let mut tokenizer = JackTokenizer::new("Main.jack");
-    // loop {
-    //     match tokenizer.has_more_token(30) {
-    //         Some(_) => {
-    //             println!("{:?}", tokenizer.tokens);
-    //         }
-    //         None => break,
-    //     } 
-    // }
-    // loop {
-    //     match tokenizer.has_more_token(2) {
-    //         Some(_) => {
-    //             println!("{:?}", tokenizer.tokens);
-    //         }
-    //         None => break,
-    //     } 
-    // }
+
+    let mut tokenizer = JackTokenizer::new("Main.jack");
+    while let true = tokenizer.has_more_token(30) {
+        println!("{:?}", tokenizer.tokens);
+        println!("{:?}", tokenizer.token_kinds);
+    }
+    while let true = tokenizer.has_more_token(3) {
+        println!("{:?}", tokenizer.tokens);
+        println!("{:?}", tokenizer.token_kinds);
+    }
+    while let true = tokenizer.has_more_token(1) {
+        println!("{:?}", tokenizer.tokens);
+        println!("{:?}", tokenizer.token_kinds);
+    }
 }
