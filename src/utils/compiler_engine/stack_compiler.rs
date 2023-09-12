@@ -1,6 +1,5 @@
-use crate::prelude::*;
 use crate::prelude::panic;
-type CompilerFunc = dyn FnMut(&mut File, &mut JackTokenizer, &mut i8) -> Option<String>;
+use crate::prelude::*;
 
 pub struct StackCompiler {
     list_func: HashMap<String, Box<CompilerFunc>>,
@@ -19,68 +18,62 @@ impl Default for StackCompiler {
     fn default() -> StackCompiler {
         let mut list_func: HashMap<String, Box<CompilerFunc>> = HashMap::new();
         list_func.insert(
-            "expressionFn".to_string(),
+            "Expression".to_string(),
             Box::new(CompilationEngine::expression_compiler),
         );
         list_func.insert(
-            "expressionlistFn".to_string(),
+            "Expressionlist".to_string(),
             Box::new(CompilationEngine::expression_list_compiler),
         );
         list_func.insert(
-            "whileFn".to_string(),
+            "While".to_string(),
             Box::new(CompilationEngine::while_compiler),
         );
         list_func.insert(
-            "statementsFn".to_string(),
+            "Statements".to_string(),
             Box::new(CompilationEngine::statements_compiler),
         );
         list_func.insert(
-            "termFn".to_string(),
+            "Term".to_string(),
             Box::new(CompilationEngine::term_compiler),
         );
+        list_func.insert("Let".to_string(), Box::new(CompilationEngine::let_compiler));
+        list_func.insert("If".to_string(), Box::new(CompilationEngine::if_compiler));
         list_func.insert(
-            "letFn".to_string(),
-            Box::new(CompilationEngine::let_compiler),
-        );
-        list_func.insert(
-            "ifFn".to_string(), 
-            Box::new(CompilationEngine::if_compiler)
-        );
-        list_func.insert(
-            "classFn".to_string(),
+            "Class".to_string(),
             Box::new(CompilationEngine::class_compiler),
         );
         list_func.insert(
-            "classvardecFn".to_string(),
+            "ClassVarDec".to_string(),
             Box::new(CompilationEngine::class_var_dec_compiler),
         );
         list_func.insert(
-            "subroutinedecFn".to_string(),
+            "SubroutineDec".to_string(),
             Box::new(CompilationEngine::subroutine_dec_compiler),
         );
         list_func.insert(
-            "parameterlistFn".to_string(),
+            "ParameterList".to_string(),
             Box::new(CompilationEngine::parameter_list_compiler),
         );
         list_func.insert(
-            "subroutinebodyFn".to_string(),
+            "SubroutineBody".to_string(),
             Box::new(CompilationEngine::subroutine_body_compiler),
         );
         list_func.insert(
-            "subroutinecallFn".to_string(),
+            "SubroutineCall".to_string(),
             Box::new(CompilationEngine::subroutine_call_compiler),
         );
         #[rustfmt::skip]
         list_func.insert(
-            "doFn".to_string(), 
+            "Do".to_string(), 
             Box::new(CompilationEngine::do_compiler)
         );
         list_func.insert(
-            "vardecFn".to_string(),
+            "VarDec".to_string(),
             Box::new(CompilationEngine::var_dec_compiler),
         );
         list_func.insert(
-            "returnFn".to_string(),
+            "ReturnFn".to_string(),
             Box::new(CompilationEngine::return_compiler),
         );
         Self {
@@ -99,7 +92,9 @@ impl StackCompiler {
         self.pointer = self.stack_compiler.len() - 1;
     }
     pub fn pop(&mut self) {
-        if self.stack_compiler.len() == 0 { panic!("No fucntions in stack"); }        
+        if self.stack_compiler.len() == 0 {
+            panic!("No fucntions in stack");
+        }
         self.stack_compiler.pop();
         self.stack_state.pop();
         self.pointer = self.stack_compiler.len() - 1;
