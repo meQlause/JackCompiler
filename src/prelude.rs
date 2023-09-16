@@ -8,6 +8,7 @@ pub use std::io::{BufRead, BufReader};
 pub use std::sync::Arc;
 pub use std::vec;
 
+
 pub use crate::errors::ParsingError;
 pub use crate::utils::compiler_engine::compilation_engine::CompilationEngine;
 pub use crate::utils::compiler_engine::grammar::Grammar;
@@ -20,3 +21,4 @@ pub use crate::utils::jack_tokenizer::tokenizer::{JackTokenizer, Tokenizer};
 
 pub type ResultParser<T> = std::result::Result<T, ParsingError>;
 pub type CompilerFunc = dyn FnMut(&mut File, &mut JackTokenizer, &mut i8) -> String;
+
