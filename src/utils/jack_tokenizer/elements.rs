@@ -7,22 +7,23 @@ pub enum TokenKind {
     Identifier,
     IntVal,
     StringVal,
+    None,
 }
 impl PartialEq for TokenKind {
     fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (TokenKind::Keyword, TokenKind::Keyword) => true,
-            (TokenKind::Symbol, TokenKind::Symbol) => true,
-            (TokenKind::Identifier, TokenKind::Identifier) => true,
-            (TokenKind::IntVal, TokenKind::IntVal ) => true,
-            (TokenKind::StringVal, TokenKind::StringVal) => true,
-            _ => false,
-        }
+        matches!(
+            (self, other),
+            (TokenKind::Keyword, TokenKind::Keyword)
+                | (TokenKind::Symbol, TokenKind::Symbol)
+                | (TokenKind::Identifier, TokenKind::Identifier)
+                | (TokenKind::IntVal, TokenKind::IntVal)
+                | (TokenKind::StringVal, TokenKind::StringVal)
+        )
     }
 }
 #[derive(Debug)]
 pub struct Elements {
-symbols: Arc<[&'static str; 19]>,
+    symbols: Arc<[&'static str; 19]>,
     keywords: Arc<[&'static str; 21]>,
 }
 impl Default for Elements {
