@@ -1,4 +1,3 @@
-use crate::prelude::panic;
 use crate::prelude::*;
 
 pub struct StackCompiler {
@@ -22,7 +21,7 @@ impl Default for StackCompiler {
             Box::new(CompilationEngine::expression_compiler),
         );
         list_func.insert(
-            "Expressionlist".to_string(),
+            "ExpressionList".to_string(),
             Box::new(CompilationEngine::expression_list_compiler),
         );
         list_func.insert(
@@ -37,8 +36,16 @@ impl Default for StackCompiler {
             "Term".to_string(),
             Box::new(CompilationEngine::term_compiler),
         );
-        list_func.insert("Let".to_string(), Box::new(CompilationEngine::let_compiler));
-        list_func.insert("If".to_string(), Box::new(CompilationEngine::if_compiler));
+        #[rustfmt::skip]
+        list_func.insert(
+            "Let".to_string(), 
+            Box::new(CompilationEngine::let_compiler)
+        );
+        #[rustfmt::skip]
+        list_func.insert(
+            "If".to_string(), 
+            Box::new(CompilationEngine::if_compiler)
+        );
         list_func.insert(
             "Class".to_string(),
             Box::new(CompilationEngine::class_compiler),
@@ -73,8 +80,24 @@ impl Default for StackCompiler {
             Box::new(CompilationEngine::var_dec_compiler),
         );
         list_func.insert(
-            "ReturnFn".to_string(),
+            "Return".to_string(),
             Box::new(CompilationEngine::return_compiler),
+        );
+        list_func.insert(
+            "ParenthesesExpressions".to_string(),
+            Box::new(CompilationEngine::parantheses_expressions_compiler),
+        );
+        list_func.insert(
+            "BracketsExpressions".to_string(),
+            Box::new(CompilationEngine::brackets_expression_compiler),
+        );
+        list_func.insert(
+            "ParenthesesExpressionsList".to_string(),
+            Box::new(CompilationEngine::parantheses_expressions_list_compiler),
+        );
+        list_func.insert(
+            "BracketsExpressionsList".to_string(),
+            Box::new(CompilationEngine::brackets_expression_list_compiler),
         );
         Self {
             list_func,
@@ -86,15 +109,12 @@ impl Default for StackCompiler {
 }
 
 impl StackCompiler {
-    pub fn push(&mut self, function: String) {
-        self.stack_compiler.push(function);
+    pub fn push(&mut self, function_name: String) {
+        self.stack_compiler.push(function_name);
         self.stack_state.push(1);
         self.pointer = self.stack_compiler.len() - 1;
     }
     pub fn pop(&mut self) {
-        if self.stack_compiler.len() == 0 {
-            panic!("No fucntions in stack");
-        }
         self.stack_compiler.pop();
         self.stack_state.pop();
         self.pointer = self.stack_compiler.len() - 1;
